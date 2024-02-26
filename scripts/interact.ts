@@ -1,45 +1,48 @@
+  // Registration tx: 0xaaf58d5514eb9cc3653978cafc02a1d2879be73855a0ba81b44f66f04c3ec043
+
+  // Verification tx: 0xa24b552472d1342d4318c2a4ee3d9b335ba52b26a9d19429363335ff18b815c0
+
 import { ethers } from "hardhat";
 
-import { IdentityRegistryFactory, IdentityRegistry } from "../typechain-types/contracts";
-
 async function main() {
-  const [deployer] = await ethers.getSigners();
-  const deployerAddress = await deployer.getAddress();
 
-  console.log("Interacting with Identity Registry contracts with address:", deployerAddress);
-
-  // Deploy IdentityRegistryFactory
   const IdentityRegistryFactory = await ethers.getContractFactory("IdentityRegistryFactory");
   const identityRegistryFactory = await IdentityRegistryFactory.deploy();
-  await identityRegistryFactory.deployed();
 
-  console.log("IdentityRegistryFactory deployed to:", identityRegistryFactory.address);
+  console.log("IdentityRegistryFactory deployed to:", identityRegistryFactory.target);
 
   // Create a new Identity Registry
   await identityRegistryFactory.createRegistry();
+  console.log("Identity Registry created");
 
-  // Get the deployed Identity Registry
-  const [deployedRegistry] = await identityRegistryFactory.getDeployedRegistries();
-  console.log("Deployed Identity Registry:", deployedRegistry);
+  await identityRegistryFactory.waitForDeployment();
 
-  // Interact with the Identity Registry
-  const IdentityRegistry = await ethers.getContractFactory("IdentityRegistry");
-  const identityRegistryContract = await IdentityRegistry.attach(deployedRegistry);
+
+// Get the deployed IdentityRegistry contract address
+const deployedRegistries = await identityRegistryFactory.getDeployedRegistries();
+const identityRegistryAddress = deployedRegistries[0];
+console.log("IdentityRegistry address:", identityRegistryAddress);
+
+    // Get the deployed IdentityRegistry contract
+    const IdentityRegistry = await ethers.getContractAt("IdentityRegistry", identityRegistryAddress);
 
   // Register an identity
-  const name = "Alice";
+  const name = "Victor";
   const age = 25;
-  const country = "Wonderland";
-  await identityRegistryContract.registerIdentity(name, age, country);
-  console.log(`${name}'s identity registered in the registry`);
+  const country = "Nigeria";
+
+  const registerTx = await IdentityRegistry.registerIdentity(name, age, country);
+  await registerTx.wait(); // Wait for the transaction to be mined
+
+  console.log(`${name}'s identity registered in the registry. Tx Hash: ${registerTx.hash}`);
 
   // Verify the registered identity
-  await identityRegistryContract.verifyIdentity();
-  console.log(`${name}'s identity verified`);
+  const verifyTx = await IdentityRegistry.verifyIdentity();
+  await verifyTx.wait(); // Wait for the transaction to be mined
 
-  // Example: Print the balance of the deployer's address after the interaction
-  const balance = await ethers.provider.getBalance(deployerAddress);
-  console.log("Deployer's balance:", ethers.utils.formatEther(balance));
+  console.log(`${name}'s identity verified. Tx Hash: ${verifyTx.hash}`);
+
+
 }
 
 // We recommend this pattern to be able to use async/await everywhere
